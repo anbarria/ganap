@@ -75,7 +75,9 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err) {
-      setError(err.message || "Ocurrió un error. Intenta de nuevo.");
+      const msg = err?.message;
+      const esUtil = msg && msg !== "{}" && msg.trim() !== "";
+      setError(esUtil ? msg : "Ocurrió un error inesperado (posiblemente en el envío de correo). Revisa Authentication → Logs en Supabase para ver el detalle, o intenta de nuevo en unos minutos.");
     }
     setLoading(false);
   }
