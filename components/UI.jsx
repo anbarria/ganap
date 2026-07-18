@@ -1,6 +1,7 @@
 "use client";
 
-import { X, Tag } from "lucide-react";
+import { useState } from "react";
+import { X, Tag, Eye, EyeOff, Check } from "lucide-react";
 
 export function EarTag({ children, tone = "amber" }) {
   const tones = {
@@ -54,3 +55,61 @@ export function Field({ label, children }) {
 
 export const inputClass =
   "w-full px-3 py-2 rounded-lg border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
+
+export function PasswordInput({ value, onChange, placeholder, required, minLength }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={visible ? "text" : "password"}
+        className={`${inputClass} pr-10`}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        minLength={minLength}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+        tabIndex={-1}
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
+export function MultiSelect({ options, selected, onChange, disabled }) {
+  function toggle(opt) {
+    if (disabled) return;
+    if (selected.includes(opt)) onChange(selected.filter((o) => o !== opt));
+    else onChange([...selected, opt]);
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((opt) => {
+        const active = selected.includes(opt);
+        return (
+          <button
+            type="button"
+            key={opt}
+            onClick={() => toggle(opt)}
+            disabled={disabled}
+            className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border transition ${
+              active
+                ? "bg-amber-500 border-amber-500 text-slate-950"
+                : "bg-white border-stone-300 text-slate-600 hover:border-amber-400"
+            } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+          >
+            {active && <Check size={12} />}
+            {opt}
+          </button>
+        );
+      })}
+      {options.length === 0 && <p className="text-xs text-slate-400">Selecciona una especie primero.</p>}
+    </div>
+  );
+}
+

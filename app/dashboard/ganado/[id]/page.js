@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Dna, Syringe, Stethoscope, Store, Beef, Plus } from "lucide-react";
+import { ChevronLeft, Dna, Syringe, Stethoscope, Store, Beef, Plus, LogOut as ExitIcon } from "lucide-react";
 import { createClient } from "../../../../lib/supabase/client";
 import { useProfile } from "../../../../lib/useProfile";
 import { EarTag, Badge, Modal, Field, inputClass } from "../../../../components/UI";
 import { fmtDate, daysBetween, todayISO, addDays } from "../../../../lib/helpers";
+import { MOTIVOS_SALIDA } from "../../../../lib/ganadoConfig";
 
 export default function AnimalDetailPage() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function AnimalDetailPage() {
   const [showVac, setShowVac] = useState(false);
   const [showVisita, setShowVisita] = useState(false);
   const [showVenta, setShowVenta] = useState(false);
+  const [showSalida, setShowSalida] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +74,17 @@ export default function AnimalDetailPage() {
     setShowVenta(false);
     load();
   }
+  async function guardarSalida(payload) {
+    const supabase = createClient();
+    await supabase.from("animales").update(payload).eq("id", id);
+    setShowSalida(false);
+    load();
+  }
+  async function reingresarAFinca() {
+    const supabase = createClient();
+    await supabase.from("animales").update({ estado: "Activo", fecha_salida: null, motivo_salida: null, destino_salida: null }).eq("id", id);
+    load();
+  }
 
   if (loading) return <p className="text-sm text-slate-400 p-6">Cargando…</p>;
   if (!animal) return <p className="text-sm text-slate-400 p-6">No se encontró este animal (o no tienes acceso a él).</p>;
@@ -87,27 +100,53 @@ export default function AnimalDetailPage() {
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-full bg-stone-100 flex items-center justify-center text-slate-500"><Beef size={26} /></div>
+            <div className="h-14 w-14 rounded-full bg-stone-100 flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
+              {animal.foto_url ? <img src={animal.foto_url} alt="" className="h-full w-full object-cover" /> : <Beef size={26} />}
+            </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-serif text-xl font-bold text-slate-900">{animal.nombre}</h1>
                 <EarTag>{animal.arete}</EarTag>
                 {animal.en_venta && <Badge color="emerald">En venta · ${animal.precio_venta}</Badge>}
+                {animal.estado !== "Activo" && <Badge color={animal.motivo_salida === "Fallecimiento" ? "red" : "slate"}>{animal.estado}</Badge>}
               </div>
               <p className="text-sm text-slate-500">
                 {animal.especie} · {animal.raza} · {animal.sexo} · {fincaNombre(animal.finca_id)}
               </p>
+              {(animal.propositos || []).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {animal.propositos.map((p) => <Badge key={p} color="slate">{p}</Badge>)}
+                </div>
+              )}
             </div>
           </div>
-          {puedePublicar && (
-            <button
-              onClick={() => setShowVenta(true)}
-              className={`text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 ${animal.en_venta ? "bg-stone-100 text-slate-600" : "bg-amber-500 text-slate-950"}`}
-            >
-              <Store size={15} /> {animal.en_venta ? "Editar publicación" : "Publicar en Mercado"}
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {puedePublicar && animal.estado === "Activo" && (
+              <button
+                onClick={() => setShowVenta(true)}
+                className={`text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 ${animal.en_venta ? "bg-stone-100 text-slate-600" : "bg-amber-500 text-slate-950"}`}
+              >
+                <Store size={15} /> {animal.en_venta ? "Editar publicación" : "Publicar en Mercado"}
+              </button>
+            )}
+            {puedePublicar && animal.estado === "Activo" && (
+              <button onClick={() => setShowSalida(true)} className="text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 bg-stone-100 text-slate-600">
+                <ExitIcon size={15} /> Registrar salida
+              </button>
+            )}
+            {puedePublicar && animal.estado !== "Activo" && (
+              <button onClick={reingresarAFinca} className="text-sm font-semibold px-3.5 py-2 rounded-lg text-emerald-700 bg-emerald-50">
+                Reingresar a la finca
+              </button>
+            )}
+          </div>
         </div>
+        {animal.estado !== "Activo" && (
+          <div className="mt-4 bg-stone-50 rounded-lg p-3 text-sm">
+            <p className="font-semibold text-slate-700">Salida registrada: {animal.motivo_salida}</p>
+            <p className="text-slate-500 text-xs mt-0.5">Fecha: {fmtDate(animal.fecha_salida)}{animal.destino_salida ? ` · Destino: ${animal.destino_salida}` : ""}</p>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 text-sm">
           <MiniStat label="Nacimiento" value={fmtDate(animal.fecha_nacimiento)} />
           <MiniStat label="Peso" value={animal.peso_kg ? `${animal.peso_kg} kg` : "—"} />
@@ -182,6 +221,7 @@ export default function AnimalDetailPage() {
       {showVac && <AddVacunaModal onClose={() => setShowVac(false)} onSave={addVacuna} defaultVet={profile?.rol === "veterinario" ? profile.nombre : ""} />}
       {showVisita && <AddVisitaModal onClose={() => setShowVisita(false)} onSave={addVisita} defaultVet={profile?.rol === "veterinario" ? profile.nombre : ""} />}
       {showVenta && <VentaModal animal={animal} onClose={() => setShowVenta(false)} onSave={guardarVenta} />}
+      {showSalida && <SalidaModal onClose={() => setShowSalida(false)} onSave={guardarSalida} />}
     </div>
   );
 }
@@ -270,6 +310,37 @@ function VentaModal({ animal, onClose, onSave }) {
             Publicar
           </button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function SalidaModal({ onClose, onSave }) {
+  const [form, setForm] = useState({ fecha_salida: todayISO(), motivo_salida: "Venta", destino_salida: "" });
+  return (
+    <Modal title="Registrar salida del animal" onClose={onClose}>
+      <p className="text-xs text-slate-500 mb-3">
+        Esto marca al animal como fuera de la finca (vendido, prestado, etc.) sin borrar su historial — podrás consultarlo luego en "Salidas".
+      </p>
+      <div className="space-y-3">
+        <Field label="Motivo">
+          <select className={inputClass} value={form.motivo_salida} onChange={(e) => setForm({ ...form, motivo_salida: e.target.value })}>
+            {MOTIVOS_SALIDA.map((m) => <option key={m}>{m}</option>)}
+          </select>
+        </Field>
+        <Field label="Fecha"><input type="date" className={inputClass} value={form.fecha_salida} onChange={(e) => setForm({ ...form, fecha_salida: e.target.value })} /></Field>
+        <Field label="Destino (comprador, finca que lo recibe, etc.)">
+          <input className={inputClass} value={form.destino_salida} onChange={(e) => setForm({ ...form, destino_salida: e.target.value })} placeholder="Ej. Finca Los Álamos - Juan Pérez" />
+        </Field>
+      </div>
+      <div className="flex justify-end gap-2 mt-5">
+        <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-stone-100">Cancelar</button>
+        <button
+          onClick={() => onSave({ estado: form.motivo_salida, fecha_salida: form.fecha_salida, motivo_salida: form.motivo_salida, destino_salida: form.destino_salida, en_venta: false })}
+          className="px-4 py-2 text-sm rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold"
+        >
+          Registrar salida
+        </button>
       </div>
     </Modal>
   );

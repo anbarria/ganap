@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Beef, MapPin, Store, Users, Menu, X, LogOut } from "lucide-react";
+import { Home, Beef, MapPin, Store, Users, BarChart3, Menu, X, LogOut } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 import { useProfile } from "../../lib/useProfile";
 import { ROL_LABEL } from "../../lib/helpers";
@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/dashboard/ganado", label: "Ganado", icon: Beef },
   { href: "/dashboard/fincas", label: "Fincas y Hatos", icon: MapPin },
   { href: "/dashboard/mercado", label: "Mercado", icon: Store },
+  { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3 },
 ];
 
 export default function DashboardLayout({ children }) {
@@ -29,7 +30,7 @@ export default function DashboardLayout({ children }) {
   }
 
   const links = [...LINKS];
-  if (profile?.rol === "superadmin") {
+  if (profile && ["superadmin", "propietario", "administrador"].includes(profile.rol)) {
     links.push({ href: "/dashboard/usuarios", label: "Usuarios", icon: Users });
   }
 
