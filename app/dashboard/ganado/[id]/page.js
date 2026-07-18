@@ -6,7 +6,7 @@ import { ChevronLeft, Dna, Syringe, Stethoscope, Store, Beef, Plus, LogOut as Ex
 import { createClient } from "../../../../lib/supabase/client";
 import { useProfile } from "../../../../lib/useProfile";
 import { EarTag, Badge, Modal, Field, inputClass } from "../../../../components/UI";
-import { fmtDate, daysBetween, todayISO, addDays } from "../../../../lib/helpers";
+import { fmtDate, daysBetween, todayISO, addDays, esActivo } from "../../../../lib/helpers";
 import { MOTIVOS_SALIDA } from "../../../../lib/ganadoConfig";
 
 export default function AnimalDetailPage() {
@@ -108,7 +108,7 @@ export default function AnimalDetailPage() {
                 <h1 className="font-serif text-xl font-bold text-slate-900">{animal.nombre}</h1>
                 <EarTag>{animal.arete}</EarTag>
                 {animal.en_venta && <Badge color="emerald">En venta · ${animal.precio_venta}</Badge>}
-                {animal.estado !== "Activo" && <Badge color={animal.motivo_salida === "Fallecimiento" ? "red" : "slate"}>{animal.estado}</Badge>}
+                {!esActivo(animal.estado) && <Badge color={animal.motivo_salida === "Fallecimiento" ? "red" : "slate"}>{animal.estado}</Badge>}
               </div>
               <p className="text-sm text-slate-500">
                 {animal.especie} · {animal.raza} · {animal.sexo} · {fincaNombre(animal.finca_id)}
@@ -121,7 +121,7 @@ export default function AnimalDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {puedePublicar && animal.estado === "Activo" && (
+            {puedePublicar && esActivo(animal.estado) && (
               <button
                 onClick={() => setShowVenta(true)}
                 className={`text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 ${animal.en_venta ? "bg-stone-100 text-slate-600" : "bg-amber-500 text-slate-950"}`}
@@ -129,19 +129,19 @@ export default function AnimalDetailPage() {
                 <Store size={15} /> {animal.en_venta ? "Editar publicación" : "Publicar en Mercado"}
               </button>
             )}
-            {puedePublicar && animal.estado === "Activo" && (
+            {puedePublicar && esActivo(animal.estado) && (
               <button onClick={() => setShowSalida(true)} className="text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 bg-stone-100 text-slate-600">
                 <ExitIcon size={15} /> Registrar salida
               </button>
             )}
-            {puedePublicar && animal.estado !== "Activo" && (
+            {puedePublicar && !esActivo(animal.estado) && (
               <button onClick={reingresarAFinca} className="text-sm font-semibold px-3.5 py-2 rounded-lg text-emerald-700 bg-emerald-50">
                 Reingresar a la finca
               </button>
             )}
           </div>
         </div>
-        {animal.estado !== "Activo" && (
+        {!esActivo(animal.estado) && (
           <div className="mt-4 bg-stone-50 rounded-lg p-3 text-sm">
             <p className="font-semibold text-slate-700">Salida registrada: {animal.motivo_salida}</p>
             <p className="text-slate-500 text-xs mt-0.5">Fecha: {fmtDate(animal.fecha_salida)}{animal.destino_salida ? ` · Destino: ${animal.destino_salida}` : ""}</p>

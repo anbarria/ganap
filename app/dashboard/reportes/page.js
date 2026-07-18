@@ -5,7 +5,7 @@ import { BarChart3, Beef, Syringe, LogOut as ExitIcon, DollarSign } from "lucide
 import { createClient } from "../../../lib/supabase/client";
 import { useProfile } from "../../../lib/useProfile";
 import { EarTag, Badge } from "../../../components/UI";
-import { fmtDate, daysBetween, todayISO, ESPECIES } from "../../../lib/helpers";
+import { fmtDate, daysBetween, todayISO, ESPECIES, esActivo } from "../../../lib/helpers";
 
 export default function ReportesPage() {
   const { misFincas, loading: perfilLoading } = useProfile();
@@ -36,8 +36,8 @@ export default function ReportesPage() {
     return misFincas.find((f) => f.id === id)?.nombre || "";
   }
 
-  const activos = animales.filter((a) => a.estado === "Activo");
-  const salidas = animales.filter((a) => a.estado !== "Activo");
+  const activos = animales.filter((a) => esActivo(a.estado));
+  const salidas = animales.filter((a) => !esActivo(a.estado));
 
   const porEspecie = ESPECIES.map((esp) => ({
     especie: esp,

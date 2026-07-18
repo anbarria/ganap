@@ -6,7 +6,7 @@ import { Beef, MapPin, AlertTriangle, Store, Syringe } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 import { useProfile } from "../../lib/useProfile";
 import { EarTag, Badge } from "../../components/UI";
-import { daysBetween, todayISO } from "../../lib/helpers";
+import { daysBetween, todayISO, esActivo } from "../../lib/helpers";
 
 export default function InicioPage() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function InicioPage() {
     return <p className="text-sm text-slate-400 p-6">Cargando…</p>;
   }
 
-  const activos = animales.filter((a) => a.estado === "Activo");
+  const activos = animales.filter((a) => esActivo(a.estado));
   const enVenta = activos.filter((a) => a.en_venta).length;
 
   const alertas = [];

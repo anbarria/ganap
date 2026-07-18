@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Search, Plus, ChevronRight, Beef, Upload } from "lucide-react";
 import { createClient } from "../../../lib/supabase/client";
 import { useProfile } from "../../../lib/useProfile";
-import { EarTag, Badge, Modal, Field, inputClass, MultiSelect } from "../../../components/UI";
-import { ESPECIES, todayISO } from "../../../lib/helpers";
+import { EarTag, Badge, Modal, Field, inputClass } from "../../../components/UI";
+import { ESPECIES, todayISO, esActivo } from "../../../lib/helpers";
 import { GANADO_CONFIG } from "../../../lib/ganadoConfig";
 
 export default function GanadoPage() {
@@ -43,7 +43,7 @@ export default function GanadoPage() {
   }
 
   const filtered = animales.filter((a) => {
-    const esSalida = a.estado !== "Activo";
+    const esSalida = !esActivo(a.estado);
     if (verSalidas !== esSalida) return false;
     if (filtroEspecie !== "Todas" && a.especie !== filtroEspecie) return false;
     if (filtroFinca !== "Todas" && a.finca_id !== filtroFinca) return false;
@@ -128,7 +128,7 @@ export default function GanadoPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {a.en_venta && <Badge color="emerald">En venta</Badge>}
-                  {a.estado !== "Activo" && <Badge color={a.estado === "Fallecimiento" ? "red" : "slate"}>{a.estado}</Badge>}
+                  {!esActivo(a.estado) && <Badge color={a.estado === "Fallecimiento" ? "red" : "slate"}>{a.estado}</Badge>}
                   <ChevronRight size={16} className="text-slate-300" />
                 </div>
               </button>
@@ -165,7 +165,7 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
   const candidatosMadre = animales.filter((a) => a.especie === form.especie && a.sexo === "Hembra");
   const configEspecie = GANADO_CONFIG[form.especie] || { propositos: [], razas: [] };
   const razasDisponibles = configEspecie.razas
-    .filter((r) => form.propositos.length === 0 || r.propositos.some((p) => form.propositos.includes(p)))
+    .filter((r) => !form.propositos[0] || r.propositos.includes(form.propositos[0]))
     .map((r) => r.nombre);
 
   async function submit() {
@@ -249,17 +249,28 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
       </div>
 
       <div className="mt-3">
-        <Field label="Propósito (puedes elegir varios)">
-          <MultiSelect
-            options={configEspecie.propositos}
-            selected={form.propositos}
-            onChange={(v) => setForm({ ...form, propositos: v, razas: [] })}
-          />
+        <Field label="Propósito">
+          <select
+            className={inputClass}
+            value={form.propositos[0] || ""}
+            onChange={(e) => setForm({ ...form, propositos: e.target.value ? [e.target.value] : [], razas: [] })}
+          >
+            <option value="">— Seleccionar —</option>
+            {configEspecie.propositos.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
         </Field>
       </div>
       <div className="mt-3">
-        <Field label="Raza (puedes elegir varias)">
-          <MultiSelect options={razasDisponibles} selected={form.razas} onChange={(v) => setForm({ ...form, razas: v })} />
+        <Field label="Raza">
+          <select
+            className={inputClass}
+            value={form.razas[0] || ""}
+            onChange={(e) => setForm({ ...form, razas: e.target.value ? [e.target.value] : [] })}
+            disabled={razasDisponibles.length === 0}
+          >
+            <option value="">— Seleccionar —</option>
+            {razasDisponibles.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
         </Field>
       </div>
 

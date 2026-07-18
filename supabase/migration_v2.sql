@@ -29,7 +29,9 @@ alter table animales add column if not exists destino_salida text;  -- descripci
 create or replace function custom_access_token_hook(event jsonb)
 returns jsonb
 language plpgsql
-stable
+security definer
+set search_path = public
+set row_security = off
 as $$
 declare
   claims jsonb;
@@ -49,6 +51,7 @@ $$;
 
 grant usage on schema public to supabase_auth_admin;
 grant execute on function public.custom_access_token_hook to supabase_auth_admin;
+grant select on public.usuarios to supabase_auth_admin;
 revoke execute on function public.custom_access_token_hook from authenticated, anon, public;
 
 -- is_superadmin ya NO consulta ninguna tabla: solo lee el claim del JWT.
@@ -62,16 +65,34 @@ $$;
 
 -- 3. POLÍTICAS ACTUALIZADAS (usuarios) -------------------------------
 
+-- usuarios: cada quien ve su propia fila; superadmin ve todas;
+-- además, se expone el propietario de una finca que tenga animales publicados en el Mercado.
+-- Esta comprobación vive en una función con row_security=off para no crear un ciclo
+-- con las políticas de "fincas"/"animales" (que a su vez pueden disparar una verificación
+-- de llave foránea hacia "usuarios" al crear una finca).
+create or replace function es_vendedor_publico(uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+set row_security = off
+stable
+as $$
+  select exists (
+    select 1 from fincas f
+    join animales a on a.finca_id = f.id
+    where f.propietario_id = uid and a.en_venta = true
+  );
+$$;
+
+grant execute on function es_vendedor_publico to authenticated, anon;
+
 drop policy if exists "usuarios_select" on usuarios;
 create policy "usuarios_select" on usuarios
   for select using (
     id = auth.uid()
     or is_superadmin()
-    or exists (
-      select 1 from fincas f
-      join animales a on a.finca_id = f.id
-      where f.propietario_id = usuarios.id and a.en_venta = true
-    )
+    or es_vendedor_publico(usuarios.id)
   );
 
 -- Nueva: cualquier usuario puede ver a sus "compañeros de finca"
