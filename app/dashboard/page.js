@@ -34,10 +34,11 @@ export default function InicioPage() {
     return <p className="text-sm text-slate-400 p-6">Cargando…</p>;
   }
 
-  const enVenta = animales.filter((a) => a.en_venta).length;
+  const activos = animales.filter((a) => a.estado === "Activo");
+  const enVenta = activos.filter((a) => a.en_venta).length;
 
   const alertas = [];
-  animales.forEach((a) => {
+  activos.forEach((a) => {
     (a.vacunas || []).forEach((v) => {
       if (!v.proxima_fecha) return;
       const dias = daysBetween(todayISO(), v.proxima_fecha);
@@ -70,7 +71,7 @@ export default function InicioPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard icon={Beef} label="Animales" value={animales.length} />
+            <StatCard icon={Beef} label="Animales" value={activos.length} />
             <StatCard icon={MapPin} label="Fincas" value={misFincas.length} />
             <StatCard icon={AlertTriangle} label="Vacunas próx./vencidas" value={alertas.length} color={alertas.length ? "red" : "slate"} />
             <StatCard icon={Store} label="Publicados en Mercado" value={enVenta} color="emerald" />

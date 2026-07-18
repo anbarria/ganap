@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, ChevronRight, Beef } from "lucide-react";
+import { Search, Plus, ChevronRight, Beef, Upload } from "lucide-react";
 import { createClient } from "../../../lib/supabase/client";
 import { useProfile } from "../../../lib/useProfile";
-import { EarTag, Badge, Modal, Field, inputClass } from "../../../components/UI";
+import { EarTag, Badge, Modal, Field, inputClass, MultiSelect } from "../../../components/UI";
 import { ESPECIES, todayISO } from "../../../lib/helpers";
+import { GANADO_CONFIG } from "../../../lib/ganadoConfig";
 
 export default function GanadoPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function GanadoPage() {
   const [q, setQ] = useState("");
   const [filtroEspecie, setFiltroEspecie] = useState("Todas");
   const [filtroFinca, setFiltroFinca] = useState("Todas");
+  const [verSalidas, setVerSalidas] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,8 @@ export default function GanadoPage() {
   }
 
   const filtered = animales.filter((a) => {
+    const esSalida = a.estado !== "Activo";
+    if (verSalidas !== esSalida) return false;
     if (filtroEspecie !== "Todas" && a.especie !== filtroEspecie) return false;
     if (filtroFinca !== "Todas" && a.finca_id !== filtroFinca) return false;
     if (q && !(a.nombre?.toLowerCase().includes(q.toLowerCase()) || a.arete.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -69,6 +73,15 @@ export default function GanadoPage() {
         </p>
       ) : (
         <>
+          <div className="flex bg-white rounded-lg p-1 w-fit shadow-sm">
+            <button onClick={() => setVerSalidas(false)} className={`text-xs font-semibold px-3 py-1.5 rounded-md ${!verSalidas ? "bg-amber-500 text-slate-950" : "text-slate-500"}`}>
+              En la finca
+            </button>
+            <button onClick={() => setVerSalidas(true)} className={`text-xs font-semibold px-3 py-1.5 rounded-md ${verSalidas ? "bg-amber-500 text-slate-950" : "text-slate-500"}`}>
+              Salidas (vendidos/prestados)
+            </button>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -100,8 +113,8 @@ export default function GanadoPage() {
                 className="w-full flex items-center justify-between p-3.5 hover:bg-stone-50 text-left"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-slate-500">
-                    <Beef size={18} />
+                  <div className="h-10 w-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-slate-500 overflow-hidden">
+                    {a.foto_url ? <img src={a.foto_url} alt="" className="h-full w-full object-cover" /> : <Beef size={18} />}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -115,6 +128,7 @@ export default function GanadoPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {a.en_venta && <Badge color="emerald">En venta</Badge>}
+                  {a.estado !== "Activo" && <Badge color={a.estado === "Fallecimiento" ? "red" : "slate"}>{a.estado}</Badge>}
                   <ChevronRight size={16} className="text-slate-300" />
                 </div>
               </button>
@@ -138,16 +152,21 @@ export default function GanadoPage() {
 
 function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
   const [form, setForm] = useState({
-    arete: "", nombre: "", especie: "Bovino", raza: "", sexo: "Hembra",
+    arete: "", nombre: "", especie: "Bovino", sexo: "Hembra",
     fecha_nacimiento: todayISO(), peso_kg: "", finca_id: misFincas[0]?.id || "", hato_id: "",
-    padre_id: "", madre_id: "",
+    padre_id: "", madre_id: "", propositos: [], razas: [],
   });
+  const [foto, setFoto] = useState(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const hatosDeFinca = hatos.filter((h) => h.finca_id === form.finca_id);
   const candidatosPadre = animales.filter((a) => a.especie === form.especie && a.sexo === "Macho");
   const candidatosMadre = animales.filter((a) => a.especie === form.especie && a.sexo === "Hembra");
+  const configEspecie = GANADO_CONFIG[form.especie] || { propositos: [], razas: [] };
+  const razasDisponibles = configEspecie.razas
+    .filter((r) => form.propositos.length === 0 || r.propositos.some((p) => form.propositos.includes(p)))
+    .map((r) => r.nombre);
 
   async function submit() {
     if (!form.arete || !form.nombre || !form.finca_id) {
@@ -157,12 +176,35 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
     setSaving(true);
     setError("");
     const supabase = createClient();
+
+    let foto_url = null;
+    if (foto) {
+      const path = `${form.finca_id}/${Date.now()}-${foto.name}`;
+      const { data: subida, error: uploadError } = await supabase.storage.from("fotos-animales").upload(path, foto);
+      if (uploadError) {
+        setError("No se pudo subir la foto: " + uploadError.message);
+        setSaving(false);
+        return;
+      }
+      const { data: pub } = supabase.storage.from("fotos-animales").getPublicUrl(subida.path);
+      foto_url = pub.publicUrl;
+    }
+
     const { error: insertError } = await supabase.from("animales").insert({
-      ...form,
+      arete: form.arete,
+      nombre: form.nombre,
+      especie: form.especie,
+      sexo: form.sexo,
+      fecha_nacimiento: form.fecha_nacimiento,
       peso_kg: Number(form.peso_kg) || null,
+      finca_id: form.finca_id,
       hato_id: form.hato_id || null,
       padre_id: form.padre_id || null,
       madre_id: form.madre_id || null,
+      propositos: form.propositos,
+      razas: form.razas,
+      raza: form.razas.join(", "),
+      foto_url,
     });
     setSaving(false);
     if (insertError) {
@@ -178,11 +220,14 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
         <Field label="N° de arete"><input className={inputClass} value={form.arete} onChange={(e) => setForm({ ...form, arete: e.target.value })} placeholder="ELR-050" /></Field>
         <Field label="Nombre"><input className={inputClass} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></Field>
         <Field label="Especie">
-          <select className={inputClass} value={form.especie} onChange={(e) => setForm({ ...form, especie: e.target.value, padre_id: "", madre_id: "" })}>
+          <select
+            className={inputClass}
+            value={form.especie}
+            onChange={(e) => setForm({ ...form, especie: e.target.value, padre_id: "", madre_id: "", propositos: [], razas: [] })}
+          >
             {ESPECIES.map((e) => <option key={e}>{e}</option>)}
           </select>
         </Field>
-        <Field label="Raza"><input className={inputClass} value={form.raza} onChange={(e) => setForm({ ...form, raza: e.target.value })} /></Field>
         <Field label="Sexo">
           <select className={inputClass} value={form.sexo} onChange={(e) => setForm({ ...form, sexo: e.target.value })}>
             <option>Hembra</option><option>Macho</option>
@@ -201,6 +246,24 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
             {hatosDeFinca.map((h) => <option key={h.id} value={h.id}>{h.nombre}</option>)}
           </select>
         </Field>
+      </div>
+
+      <div className="mt-3">
+        <Field label="Propósito (puedes elegir varios)">
+          <MultiSelect
+            options={configEspecie.propositos}
+            selected={form.propositos}
+            onChange={(v) => setForm({ ...form, propositos: v, razas: [] })}
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Raza (puedes elegir varias)">
+          <MultiSelect options={razasDisponibles} selected={form.razas} onChange={(v) => setForm({ ...form, razas: v })} />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-3">
         <Field label="Padre (opcional)">
           <select className={inputClass} value={form.padre_id} onChange={(e) => setForm({ ...form, padre_id: e.target.value })}>
             <option value="">— Desconocido / externo —</option>
@@ -214,6 +277,17 @@ function AddAnimalModal({ misFincas, hatos, animales, onClose, onSaved }) {
           </select>
         </Field>
       </div>
+
+      <div className="mt-3">
+        <Field label="Foto del animal (opcional)">
+          <label className="flex items-center gap-2 border border-dashed border-stone-300 rounded-lg px-3 py-2.5 text-sm text-slate-500 cursor-pointer hover:border-amber-400">
+            <Upload size={15} />
+            {foto ? foto.name : "Seleccionar foto…"}
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => setFoto(e.target.files?.[0] || null)} />
+          </label>
+        </Field>
+      </div>
+
       {error && <p className="text-red-600 text-xs mt-3">{error}</p>}
       <div className="flex justify-end gap-2 mt-5">
         <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-stone-100">Cancelar</button>
