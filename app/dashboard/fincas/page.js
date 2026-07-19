@@ -31,14 +31,18 @@ export default function FincasPage() {
   async function crearFinca(datos) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: finca, error } = await supabase
+    const nuevaFincaId = crypto.randomUUID();
+
+    const { error } = await supabase
       .from("fincas")
-      .insert({ ...datos, propietario_id: user.id })
-      .select()
-      .single();
+      .insert({ id: nuevaFincaId, ...datos, propietario_id: user.id });
     if (error) return alert(error.message);
 
-    await supabase.from("usuario_finca").insert({ usuario_id: user.id, finca_id: finca.id });
+    const { error: linkError } = await supabase
+      .from("usuario_finca")
+      .insert({ usuario_id: user.id, finca_id: nuevaFincaId });
+    if (linkError) return alert(linkError.message);
+
     setShowNuevaFinca(false);
     reload();
     load();
