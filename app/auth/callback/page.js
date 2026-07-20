@@ -12,7 +12,14 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      // El cliente de navegador detecta automáticamente el token en la URL.
+
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token });
+      }
+
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         setMsg("¡Correo confirmado! Entrando…");

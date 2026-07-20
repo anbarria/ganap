@@ -18,8 +18,22 @@ export default function ActualizarContrasenaPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      // Le damos un instante al SDK para procesar el enlace (hash o ?code=) antes de revisar.
-      await new Promise((r) => setTimeout(r, 400));
+
+      // El paquete @supabase/ssr no procesa automáticamente los enlaces con
+      // "#access_token=..." (eso es cosa del flujo clásico). Los leemos nosotros
+      // mismos de la URL y activamos la sesión explícitamente.
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (sessionError) {
+          setSesionValida(false);
+          return;
+        }
+      }
+
       const { data } = await supabase.auth.getSession();
       setSesionValida(!!data.session);
     })();
