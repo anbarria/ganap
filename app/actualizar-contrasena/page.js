@@ -14,24 +14,32 @@ export default function ActualizarContrasenaPage() {
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sesionValida, setSesionValida] = useState(null); // null = verificando
+  const [detalleError, setDetalleError] = useState("");
 
   useEffect(() => {
     (async () => {
       const supabase = createClient();
 
-      // El paquete @supabase/ssr no procesa automáticamente los enlaces con
-      // "#access_token=..." (eso es cosa del flujo clásico). Los leemos nosotros
-      // mismos de la URL y activamos la sesión explícitamente.
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const access_token = hashParams.get("access_token");
       const refresh_token = hashParams.get("refresh_token");
+      const errorDescription = hashParams.get("error_description");
+
+      if (errorDescription) {
+        setDetalleError(decodeURIComponent(errorDescription));
+        setSesionValida(false);
+        return;
+      }
 
       if (access_token && refresh_token) {
         const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
         if (sessionError) {
+          setDetalleError(sessionError.message);
           setSesionValida(false);
           return;
         }
+      } else {
+        setDetalleError("No se encontró información de sesión en el enlace (sin access_token en la URL).");
       }
 
       const { data } = await supabase.auth.getSession();
@@ -81,6 +89,7 @@ export default function ActualizarContrasenaPage() {
             <p className="text-red-400 text-sm">
               Este enlace ya expiró o ya fue usado. Pide que te envíen una invitación nueva (o solicita "Olvidé mi contraseña" de nuevo si es tu propia cuenta).
             </p>
+            {detalleError && <p className="text-slate-500 text-xs break-words">Detalle técnico: {detalleError}</p>}
             <button onClick={() => router.push("/login")} className="text-xs text-slate-400 hover:text-amber-400">
               ← Volver a iniciar sesión
             </button>
