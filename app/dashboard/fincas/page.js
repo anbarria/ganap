@@ -17,14 +17,21 @@ export default function FincasPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
+    const fincaIds = misFincas.map((f) => f.id);
+    if (fincaIds.length === 0) {
+      setHatos([]);
+      setAnimales([]);
+      setLoading(false);
+      return;
+    }
     const [{ data: h }, { data: a }] = await Promise.all([
-      supabase.from("hatos").select("*"),
-      supabase.from("animales").select("id,finca_id,hato_id"),
+      supabase.from("hatos").select("*").in("finca_id", fincaIds),
+      supabase.from("animales").select("id,finca_id,hato_id").in("finca_id", fincaIds),
     ]);
     setHatos(h || []);
     setAnimales(a || []);
     setLoading(false);
-  }, []);
+  }, [misFincas]);
 
   useEffect(() => { if (!perfilLoading) load(); }, [perfilLoading, load]);
 
@@ -57,16 +64,20 @@ export default function FincasPage() {
 
   if (perfilLoading || loading) return <p className="text-sm text-slate-400 p-6">Cargando…</p>;
 
+  const puedeGestionarFincas = profile && ["superadmin", "propietario", "administrador"].includes(profile.rol);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="font-serif text-2xl font-bold text-slate-900">Fincas y Hatos</h1>
-        <button
-          onClick={() => setShowNuevaFinca(true)}
-          className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm px-3.5 py-2 rounded-lg"
-        >
-          <Plus size={16} /> Nueva finca
-        </button>
+        {puedeGestionarFincas && (
+          <button
+            onClick={() => setShowNuevaFinca(true)}
+            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm px-3.5 py-2 rounded-lg"
+          >
+            <Plus size={16} /> Nueva finca
+          </button>
+        )}
       </div>
 
       {misFincas.length === 0 && (
@@ -88,9 +99,11 @@ export default function FincasPage() {
                 <p className="text-sm text-slate-500 flex items-center gap-1"><MapPin size={13} /> {f.ubicacion}</p>
                 <p className="text-xs text-slate-400 mt-1">{animalesDeFinca.length} animales</p>
               </div>
-              <button onClick={() => setAddingHatoTo(f.id)} className="text-xs font-semibold text-amber-700 flex items-center gap-1">
-                <Plus size={13} /> Nuevo hato
-              </button>
+              {puedeGestionarFincas && (
+                <button onClick={() => setAddingHatoTo(f.id)} className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                  <Plus size={13} /> Nuevo hato
+                </button>
+              )}
             </div>
             <div className="grid sm:grid-cols-2 gap-3 mt-4">
               {hatosDeFinca.map((h) => (
