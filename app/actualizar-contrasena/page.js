@@ -51,7 +51,7 @@ export default function ActualizarContrasenaPage() {
     setLoading(false);
 
     if (updateError) {
-      setError("No se pudo actualizar la contraseña. El enlace puede haber expirado — solicita uno nuevo desde 'Olvidé mi contraseña'.");
+      setError(`No se pudo actualizar la contraseña: ${updateError.message}`);
       return;
     }
     setOk(true);
