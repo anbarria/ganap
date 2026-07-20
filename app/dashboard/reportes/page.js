@@ -21,8 +21,15 @@ export default function ReportesPage() {
   async function load() {
     setLoading(true);
     const supabase = createClient();
+    const fincaIds = misFincas.map((f) => f.id);
+    if (fincaIds.length === 0) {
+      setAnimales([]);
+      setVacunas([]);
+      setLoading(false);
+      return;
+    }
     const [{ data: a }, { data: v }] = await Promise.all([
-      supabase.from("animales").select("*"),
+      supabase.from("animales").select("*").in("finca_id", fincaIds),
       supabase.from("vacunas").select("*, animales(nombre, arete, finca_id)"),
     ]);
     setAnimales(a || []);

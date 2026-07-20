@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Dna, Syringe, Stethoscope, Store, Beef, Plus, LogOut as ExitIcon } from "lucide-react";
 import { createClient } from "../../../../lib/supabase/client";
 import { useProfile } from "../../../../lib/useProfile";
-import { EarTag, Badge, Modal, Field, inputClass } from "../../../../components/UI";
+import { EarTag, Badge, Modal, Field, inputClass, ZoomableImage } from "../../../../components/UI";
 import { fmtDate, daysBetween, todayISO, addDays, esActivo } from "../../../../lib/helpers";
 import { MOTIVOS_SALIDA } from "../../../../lib/ganadoConfig";
 
@@ -101,7 +101,7 @@ export default function AnimalDetailPage() {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 rounded-full bg-stone-100 flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
-              {animal.foto_url ? <img src={animal.foto_url} alt="" className="h-full w-full object-cover" /> : <Beef size={26} />}
+              {animal.foto_url ? <ZoomableImage src={animal.foto_url} alt={animal.nombre} className="h-14 w-14 rounded-full" /> : <Beef size={26} />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">

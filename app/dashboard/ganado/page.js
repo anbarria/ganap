@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, Plus, ChevronRight, Beef, Upload } from "lucide-react";
 import { createClient } from "../../../lib/supabase/client";
 import { useProfile } from "../../../lib/useProfile";
-import { EarTag, Badge, Modal, Field, inputClass } from "../../../components/UI";
+import { EarTag, Badge, Modal, Field, inputClass, ZoomableImage } from "../../../components/UI";
 import { ESPECIES, todayISO, esActivo } from "../../../lib/helpers";
 import { GANADO_CONFIG } from "../../../lib/ganadoConfig";
 
@@ -29,9 +29,16 @@ export default function GanadoPage() {
   async function load() {
     setLoading(true);
     const supabase = createClient();
+    const fincaIds = misFincas.map((f) => f.id);
+    if (fincaIds.length === 0) {
+      setAnimales([]);
+      setHatos([]);
+      setLoading(false);
+      return;
+    }
     const [{ data: a }, { data: h }] = await Promise.all([
-      supabase.from("animales").select("*").order("created_at", { ascending: false }),
-      supabase.from("hatos").select("*"),
+      supabase.from("animales").select("*").in("finca_id", fincaIds).order("created_at", { ascending: false }),
+      supabase.from("hatos").select("*").in("finca_id", fincaIds),
     ]);
     setAnimales(a || []);
     setHatos(h || []);
@@ -107,14 +114,20 @@ export default function GanadoPage() {
           <div className="bg-white rounded-xl shadow-sm divide-y divide-stone-100">
             {filtered.length === 0 && <p className="p-6 text-sm text-slate-400 text-center">No hay animales que coincidan con el filtro.</p>}
             {filtered.map((a) => (
-              <button
+              <div
                 key={a.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => router.push(`/dashboard/ganado/${a.id}`)}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-stone-50 text-left"
+                onKeyDown={(e) => e.key === "Enter" && router.push(`/dashboard/ganado/${a.id}`)}
+                className="w-full flex items-center justify-between p-3.5 hover:bg-stone-50 text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-slate-500 overflow-hidden">
-                    {a.foto_url ? <img src={a.foto_url} alt="" className="h-full w-full object-cover" /> : <Beef size={18} />}
+                  <div
+                    className="h-10 w-10 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-slate-500 overflow-hidden"
+                    onClick={(e) => a.foto_url && e.stopPropagation()}
+                  >
+                    <ZoomableImage src={a.foto_url} alt={a.nombre} className="h-10 w-10 rounded-full" fallback={<Beef size={18} />} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -131,7 +144,7 @@ export default function GanadoPage() {
                   {!esActivo(a.estado) && <Badge color={a.estado === "Fallecimiento" ? "red" : "slate"}>{a.estado}</Badge>}
                   <ChevronRight size={16} className="text-slate-300" />
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </>

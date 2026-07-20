@@ -53,6 +53,26 @@ export function Field({ label, children }) {
   );
 }
 
+export function ZoomableImage({ src, alt = "", className = "", fallback = null }) {
+  const [open, setOpen] = useState(false);
+  if (!src) return fallback;
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={`block cursor-zoom-in ${className}`}>
+        <img src={src} alt={alt} className="h-full w-full object-cover" />
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <button onClick={() => setOpen(false)} className="absolute top-4 right-4 text-white/80 hover:text-white">
+            <X size={28} />
+          </button>
+          <img src={src} alt={alt} className="max-h-[90vh] max-w-[95vw] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+    </>
+  );
+}
+
 export const inputClass =
   "w-full px-3 py-2 rounded-lg border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 

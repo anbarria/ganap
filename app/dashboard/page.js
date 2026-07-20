@@ -22,9 +22,16 @@ export default function InicioPage() {
   async function load() {
     setLoading(true);
     const supabase = createClient();
+    const fincaIds = misFincas.map((f) => f.id);
+    if (fincaIds.length === 0) {
+      setAnimales([]);
+      setLoading(false);
+      return;
+    }
     const { data } = await supabase
       .from("animales")
       .select("*, vacunas(*)")
+      .in("finca_id", fincaIds)
       .order("created_at", { ascending: false });
     setAnimales(data || []);
     setLoading(false);
