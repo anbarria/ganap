@@ -66,14 +66,23 @@ Deno.serve(async (req) => {
     });
 
     let userId = invited?.user?.id;
+    let metodoUsado = "invite";
 
-    // Si el correo ya existía como usuario de auth, lo buscamos en vez de fallar
+    // Si el correo ya existía como usuario de auth (ej. de un enlace anterior que
+    // expiró), Supabase no permite reenviar una invitación — en su lugar, le mandamos
+    // un correo de "restablecer contraseña", que sí funciona para reactivar el acceso.
     if (inviteError) {
-      if (inviteError.message?.toLowerCase().includes("already")) {
+      if (inviteError.message?.toLowerCase().includes("already") || inviteError.code === "email_exists") {
         const { data: existentes } = await supabaseAdmin.auth.admin.listUsers();
         const existente = existentes.users.find((u) => u.email === email);
         if (!existente) return json({ error: inviteError.message }, 400);
         userId = existente.id;
+        metodoUsado = "recovery";
+
+        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+          redirectTo: `${req.headers.get("origin") || ""}/actualizar-contrasena`,
+        });
+        if (resetError) return json({ error: resetError.message }, 400);
       } else {
         return json({ error: inviteError.message }, 400);
       }
@@ -92,7 +101,7 @@ Deno.serve(async (req) => {
       { onConflict: "usuario_id,finca_id" }
     );
 
-    return json({ ok: true, userId });
+    return json({ ok: true, userId, metodo: metodoUsado });
   } catch (err) {
     return json({ error: err.message || "Error inesperado." }, 500);
   }

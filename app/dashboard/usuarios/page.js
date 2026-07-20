@@ -58,7 +58,10 @@ export default function UsuariosPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "No se pudo enviar la invitación.");
-      setFeedback({ tipo: "ok", msg: `Invitación enviada a ${datos.email}.` });
+      const msg = body.metodo === "recovery"
+        ? `Esa persona ya tenía una cuenta creada — le enviamos un correo para reactivar su acceso (${datos.email}).`
+        : `Invitación enviada a ${datos.email}.`;
+      setFeedback({ tipo: "ok", msg });
       setInviteFincaId(null);
       load();
     } catch (err) {
