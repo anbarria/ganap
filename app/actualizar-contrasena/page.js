@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Beef } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
@@ -13,6 +13,17 @@ export default function ActualizarContrasenaPage() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sesionValida, setSesionValida] = useState(null); // null = verificando
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      // Le damos un instante al SDK para procesar el enlace (hash o ?code=) antes de revisar.
+      await new Promise((r) => setTimeout(r, 400));
+      const { data } = await supabase.auth.getSession();
+      setSesionValida(!!data.session);
+    })();
+  }, []);
 
   async function submit(e) {
     e.preventDefault();
@@ -49,6 +60,17 @@ export default function ActualizarContrasenaPage() {
         <h2 className="text-stone-100 font-semibold text-sm mb-4">Crea tu nueva contraseña</h2>
         {ok ? (
           <p className="text-emerald-400 text-sm">Contraseña actualizada. Entrando…</p>
+        ) : sesionValida === null ? (
+          <p className="text-slate-400 text-sm">Verificando tu enlace…</p>
+        ) : sesionValida === false ? (
+          <div className="space-y-3">
+            <p className="text-red-400 text-sm">
+              Este enlace ya expiró o ya fue usado. Pide que te envíen una invitación nueva (o solicita "Olvidé mi contraseña" de nuevo si es tu propia cuenta).
+            </p>
+            <button onClick={() => router.push("/login")} className="text-xs text-slate-400 hover:text-amber-400">
+              ← Volver a iniciar sesión
+            </button>
+          </div>
         ) : (
           <form onSubmit={submit} className="space-y-3">
             <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nueva contraseña" required minLength={6} />

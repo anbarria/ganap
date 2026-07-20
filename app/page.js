@@ -8,12 +8,21 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Los enlaces de invitación/restablecer contraseña de Supabase traen información
-    // especial después del "#" en la URL. Si redirigimos en el servidor sin revisar
-    // esto primero, esa información se pierde. Por eso este chequeo vive en el cliente.
+    // Los enlaces de invitación/restablecer contraseña de Supabase a veces traen la
+    // información después del "#" y a veces como parámetro "?code=" o "?type=" en la
+    // URL. Revisamos ambas formas y preservamos todo tal cual antes de redirigir,
+    // para no perder esa información.
     const hash = window.location.hash;
-    if (hash.includes("type=invite") || hash.includes("type=recovery")) {
-      router.replace(`/actualizar-contrasena${hash}`);
+    const search = window.location.search;
+    const esEnlaceEspecial =
+      hash.includes("type=invite") ||
+      hash.includes("type=recovery") ||
+      search.includes("type=invite") ||
+      search.includes("type=recovery") ||
+      search.includes("code=");
+
+    if (esEnlaceEspecial) {
+      router.replace(`/actualizar-contrasena${search}${hash}`);
       return;
     }
     router.replace("/dashboard");
