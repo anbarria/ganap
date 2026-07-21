@@ -24,6 +24,7 @@ export default function ActualizarContrasenaPage() {
       const access_token = hashParams.get("access_token");
       const refresh_token = hashParams.get("refresh_token");
       const errorDescription = hashParams.get("error_description");
+      const code = new URLSearchParams(window.location.search).get("code");
 
       if (errorDescription) {
         setDetalleError(decodeURIComponent(errorDescription));
@@ -38,8 +39,15 @@ export default function ActualizarContrasenaPage() {
           setSesionValida(false);
           return;
         }
+      } else if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setDetalleError(exchangeError.message);
+          setSesionValida(false);
+          return;
+        }
       } else {
-        setDetalleError("No se encontró información de sesión en el enlace (sin access_token en la URL).");
+        setDetalleError("No se encontró información de sesión en el enlace (sin access_token ni code en la URL).");
       }
 
       const { data } = await supabase.auth.getSession();

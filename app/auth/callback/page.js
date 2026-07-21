@@ -16,8 +16,12 @@ export default function AuthCallbackPage() {
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const access_token = hashParams.get("access_token");
       const refresh_token = hashParams.get("refresh_token");
+      const code = new URLSearchParams(window.location.search).get("code");
+
       if (access_token && refresh_token) {
         await supabase.auth.setSession({ access_token, refresh_token });
+      } else if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
       }
 
       const { data } = await supabase.auth.getSession();
